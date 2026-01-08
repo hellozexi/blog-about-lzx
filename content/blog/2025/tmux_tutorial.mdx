@@ -1,0 +1,154 @@
+---
+title: "tmux Tutorial: Master Terminal Multiplexing"
+date: "2025-01-08"
+summary: "A comprehensive guide to tmux, covering key concepts, essential commands, common workflows, and configuration for efficient terminal management."
+categories: ["Development Tools"]
+tags: ["tmux", "terminal", "productivity", "dev-tools"]
+---
+
+# Introduction to tmux
+
+tmux is a terminal multiplexer that lets you:
+
+- Create multiple terminal sessions in one window
+- Split windows into panes
+- Detach and reattach sessions (keep processes running)
+
+## Key Concepts
+
+- **Session**: A collection of windows under one tmux instance
+- **Window**: A tab-like container within a session
+- **Pane**: A split section within a window
+
+## Basic Usage
+
+### Starting tmux
+
+```bash
+tmux                        # Start new session with default name
+tmux new -s mysession       # Start named session
+tmux attach -t mysession    # Attach to existing session
+tmux ls                     # List all sessions
+```
+
+### Prefix Key
+
+All tmux shortcuts use a prefix key. Default is `Ctrl+b` (press and release, then press the command key).
+
+## Essential Commands
+
+### Session Management
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+b d` | Detach from session |
+| `Ctrl+b $` | Rename session |
+| `Ctrl+b s` | List sessions |
+| `Ctrl+b (` | Previous session |
+| `Ctrl+b )` | Next session |
+
+### Window Management
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+b c` | Create new window |
+| `Ctrl+b ,` | Rename window |
+| `Ctrl+b n` | Next window |
+| `Ctrl+b p` | Previous window |
+| `Ctrl+b 0-9` | Go to window number |
+| `Ctrl+b w` | List windows |
+| `Ctrl+b &` | Close window |
+
+### Pane Management
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+b %` | Split vertically |
+| `Ctrl+b "` | Split horizontally |
+| `Ctrl+b Arrow` | Move between panes |
+| `Ctrl+b o` | Cycle panes |
+| `Ctrl+b x` | Close pane |
+| `Ctrl+b Space` | Toggle pane layouts |
+| `Ctrl+b {` | Move pane left |
+| `Ctrl+b }` | Move pane right |
+| `Ctrl+b z` | Toggle zoom (expand/shrink pane) |
+
+### Other Useful Commands
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+b ?` | Show all shortcuts |
+| `Ctrl+b :` | Enter command mode |
+| `Ctrl+b [` | Enter scroll/copy mode |
+| `Ctrl+b ]` | Paste from buffer |
+| `Ctrl+b t` | Show clock |
+
+## Common Workflows
+
+### Split-screen development
+
+```bash
+tmux                     # Start tmux
+Ctrl+b "                 # Split horizontally
+# Run server in top pane
+Ctrl+b Arrow             # Move to bottom pane
+# Run client or tests below
+```
+
+### Persistent session (keep processes running)
+
+```bash
+tmux new -s work         # Create session
+# Run your long-running process
+Ctrl+b d                 # Detach (process keeps running)
+# ... do other work ...
+tmux attach -t work      # Reattach later
+```
+
+### Multiple project layouts
+
+```bash
+tmux new -s project1     # Session for project 1
+# Set up windows/panes
+Ctrl+b d                 # Detach
+tmux new -s project2     # Session for project 2
+# Switch between: tmux attach -t project1/project2
+```
+
+## Configuration
+
+Create `~/.tmux.conf` for custom settings:
+
+```bash
+# Change prefix to Ctrl+a (easier for some)
+set -g prefix C-a
+unbind C-b
+
+# Enable mouse mode
+set -g mouse on
+
+# Start window/pane numbering at 1
+set -g base-index 1
+setw -g pane-base-index 1
+
+# Easier split shortcuts
+bind v split-window -h -c "#{pane_current_path}"
+bind h split-window -v -c "#{pane_current_path}"
+
+# Vim-like pane navigation
+bind h select-pane -L
+bind j select-pane -D
+bind k select-pane -U
+bind l select-pane -R
+
+# Improve colors
+set -g default-terminal "screen-256color"
+```
+
+## Quick Reference Commands
+
+```bash
+tmux kill-session -t name    # Kill a session
+tmux kill-server             # Kill all sessions
+tmux source-file ~/.tmux.conf # Reload config
+```

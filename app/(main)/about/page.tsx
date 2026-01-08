@@ -1,6 +1,6 @@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Mail, Github, Twitter } from 'lucide-react'
+import { Mail, Github } from 'lucide-react'
 
 export const metadata = {
   title: '关于 - 我的博客',
@@ -72,31 +72,21 @@ export default function AboutPage() {
           <CardContent>
             <div className="space-y-4">
               <a
-                href="https://github.com"
+                href="https://github.com/hellozexi"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Github className="h-5 w-5" />
-                <span>GitHub</span>
+                <span>GitHub - hellozexi</span>
               </a>
 
               <a
-                href="https://twitter.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <Twitter className="h-5 w-5" />
-                <span>Twitter</span>
-              </a>
-
-              <a
-                href="mailto:your-email@example.com"
+                href="mailto:mikeliu2511@gmail.com"
                 className="flex items-center gap-3 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Mail className="h-5 w-5" />
-                <span>Email</span>
+                <span>Email - mikeliu2511@gmail.com</span>
               </a>
             </div>
           </CardContent>

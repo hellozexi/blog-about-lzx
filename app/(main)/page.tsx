@@ -1,14 +1,17 @@
 import Link from 'next/link'
-import { ArrowRight } from 'lucide-react'
-import { getAllPosts } from '@/lib/posts'
+import { ArrowRight, FolderOpen } from 'lucide-react'
+import { getAllPosts, getCategories, getCategoryCount } from '@/lib/posts'
 import { formatDate } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { BlogSearch } from '@/components/blog/search'
 
 export default async function Home() {
   const posts = await getAllPosts()
   const featuredPosts = posts.slice(0, 3)
+  const categories = await getCategories()
+  const categoryCount = await getCategoryCount()
 
   return (
     <div className="mx-auto max-w-7xl px-6 md:px-8 lg:px-12 py-12">
@@ -20,7 +23,13 @@ export default async function Home() {
         <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
           记录技术学习、项目经验和生活感悟的地方
         </p>
-        <div className="mt-10 flex gap-4 justify-center">
+
+        {/* Search Box */}
+        <div className="mt-10">
+          <BlogSearch posts={posts} />
+        </div>
+
+        <div className="mt-8 flex gap-4 justify-center">
           <Button asChild size="lg">
             <Link href="/blog">
               浏览文章 <ArrowRight className="ml-2 h-4 w-4" />
@@ -30,6 +39,48 @@ export default async function Home() {
             <Link href="/about">关于我</Link>
           </Button>
         </div>
+      </section>
+
+      {/* Categories Section */}
+      <section className="mt-20">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold tracking-tight">浏览分类</h2>
+        </div>
+
+        <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {categories.map((category) => (
+            <Link
+              key={category}
+              href={`/blog/category/${encodeURIComponent(category)}`}
+              className="group"
+            >
+              <Card className="h-40 transition-all hover:shadow-lg hover:border-primary/50 flex flex-col overflow-hidden">
+                <CardHeader className="pb-3 px-4 flex-shrink-0">
+                  <div className="flex items-center justify-between">
+                    <FolderOpen className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0" />
+                    <Badge variant="secondary" className="text-xs flex-shrink-0">
+                      {categoryCount[category] || 0} 篇
+                    </Badge>
+                  </div>
+                  <CardTitle className="text-base mt-2 group-hover:text-primary transition-colors truncate overflow-hidden">
+                    {category}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pb-4 px-4 flex-1">
+                  <p className="text-sm text-muted-foreground truncate">
+                    点击查看 {category} 分类下的所有文章
+                  </p>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+
+        {categories.length === 0 && (
+          <div className="text-center py-12 text-muted-foreground">
+            暂无分类，敬请期待！
+          </div>
+        )}
       </section>
 
       {/* Featured Posts */}

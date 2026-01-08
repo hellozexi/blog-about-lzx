@@ -55,9 +55,11 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <header className="mb-12 text-center">
           <div className="flex gap-2 flex-wrap justify-center mb-6">
             {post.categories.map((category) => (
-              <Badge key={category} variant="secondary" className="text-sm px-3 py-1">
-                {category}
-              </Badge>
+              <Link key={category} href={`/blog/category/${encodeURIComponent(category)}`}>
+                <Badge variant="secondary" className="text-sm px-3 py-1 hover:bg-primary/20 transition-colors cursor-pointer">
+                  {category}
+                </Badge>
+              </Link>
             ))}
           </div>
 

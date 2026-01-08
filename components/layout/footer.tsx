@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Github, Twitter } from 'lucide-react'
+import { Github, Mail } from 'lucide-react'
 
 export function Footer() {
   const currentYear = new Date().getFullYear()
@@ -16,11 +16,11 @@ export function Footer() {
               rel="noreferrer"
               className="font-medium underline underline-offset-4"
             >
-              Next.js 15
+              Next.js 16
             </Link>
             . The source code is available on{' '}
             <Link
-              href="https://github.com"
+              href="https://github.com/hellozexi"
               target="_blank"
               rel="noreferrer"
               className="font-medium underline underline-offset-4"
@@ -33,7 +33,7 @@ export function Footer() {
 
         <div className="flex items-center space-x-4">
           <Link
-            href="https://github.com"
+            href="https://github.com/hellozexi"
             target="_blank"
             rel="noreferrer"
             className="text-muted-foreground hover:text-foreground"
@@ -42,13 +42,11 @@ export function Footer() {
             <span className="sr-only">GitHub</span>
           </Link>
           <Link
-            href="https://twitter.com"
-            target="_blank"
-            rel="noreferrer"
+            href="mailto:mikeliu2511@gmail.com"
             className="text-muted-foreground hover:text-foreground"
           >
-            <Twitter className="h-5 w-5" />
-            <span className="sr-only">Twitter</span>
+            <Mail className="h-5 w-5" />
+            <span className="sr-only">Email</span>
           </Link>
         </div>
       </div>

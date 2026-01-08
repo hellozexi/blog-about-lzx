@@ -145,37 +145,104 @@
   --hljs-function: oklch(0.696 0.17 162.48);
 }
 
+/* Ensure code blocks use highlight.js styles */
+/* Don't override pre/code styling from MDX components */
+pre code.hljs {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  line-height: 1.6;
+}
+
 .hljs {
   background: var(--hljs-bg);
   color: var(--hljs-fg);
-  padding: 1rem;
-  border-radius: 0.5rem;
+  line-height: 1.6;
 }
 
+/* Ensure proper line spacing in code blocks */
+pre {
+  line-height: 1.6;
+}
+
+code {
+  line-height: 1.6;
+}
+
+/* Comments */
 .hljs-comment,
 .hljs-quote {
   color: var(--hljs-comment);
   font-style: italic;
 }
 
+/* Keywords */
 .hljs-keyword,
 .hljs-selector-tag,
-.hljs-literal {
+.hljs-literal,
+.hljs-type,
+.hljs-addition {
   color: var(--hljs-keyword);
-  font-weight: bold;
+  font-weight: 600;
 }
 
+/* Strings and Attributes */
 .hljs-string,
-.hljs-attr {
+.hljs-attr,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-subst {
   color: var(--hljs-string);
 }
 
+/* Numbers */
 .hljs-number,
-.hljs-symbol {
+.hljs-regexp,
+.hljs-link {
   color: var(--hljs-number);
 }
 
+/* Functions and Titles */
 .hljs-function,
-.hljs-title {
+.hljs-title,
+.hljs-section,
+.hljs-built_in {
   color: var(--hljs-function);
+}
+
+/* Meta and other elements */
+.hljs-class,
+.hljs-meta {
+  color: var(--hljs-keyword);
+}
+
+.hljs-meta-keyword,
+.hljs-meta-string {
+  color: var(--hljs-string);
+}
+
+/* Bash specific */
+.hljs-variable,
+.hljs-template-variable {
+  color: var(--hljs-string);
+}
+
+.hljs-operator,
+.hljs-punctuation {
+  color: var(--hljs-fg);
+}
+
+/* Deletions */
+.hljs-deletion {
+  color: var(--hljs-keyword);
+}
+
+/* Strong */
+.hljs-strong {
+  font-weight: bold;
+}
+
+/* Emphasis */
+.hljs-emphasis {
+  font-style: italic;
 }
