@@ -1,0 +1,151 @@
+---
+title: "WSL2 运行 Claude Code 卡顿的解决方法"
+date: "2025-01-11"
+summary: "解决 Windows 下 WSL2 运行 Claude Code 时输入卡顿的问题，分析根本原因并提供多种解决方案。"
+categories: ["Development Tools"]
+tags: ["wsl2", "claude-code", "windows", "troubleshooting", "performance"]
+draft: false
+---
+
+## 问题描述
+
+在 WSL2（Windows Subsystem for Linux 2）环境下运行 Claude Code 时，可能会遇到以下问题：
+
+- 在程序内打字时出现明显的卡顿
+- 每次按键都有延迟感
+- 输入体验极不流畅
+
+**环境条件：**
+- Windows 系统
+- WSL2（如 Ubuntu）
+- Claude Code 最新版
+- 非 root 用户下运行
+
+## 问题原因
+
+WSL2 会将 Windows 的 Path 追加到 Linux 的 `$PATH` 环境变量中，这使得 Linux 终端可以直接运行 `powershell.exe` 等 Windows 程序。
+
+然而，Claude Code 会检测 `$PATH`，当发现 `powershell.exe` 后，会**反复调用它来获取 Windows 用户目录**：
+
+```bash
+powershell.exe -Command '$env:USERPROFILE'
+```
+
+在 WSL2 中，从 Linux 启动 Windows 程序的延迟很高。每次按键都需要等待这个调用完成，从而引发周期性卡顿。
+
+## 解决方案
+
+### 方案一：创建 powershell.exe 包装脚本（推荐）
+
+创建一个包装脚本，拦截特定调用并直接返回结果：
+
+```bash
+# 创建 ~/bin 目录（如果不存在）
+mkdir -p ~/bin
+
+# 创建包装脚本
+cat << 'EOF' > ~/bin/powershell.exe
+#!/bin/bash
+if [[ "$1" == "-Command" && "$2" == "\$env:USERPROFILE" ]]; then
+  # 替换为你的 Windows 用户名
+  echo "C:\\Users\\YourUsername"
+else
+  # 其他情况调用真正的 powershell.exe
+  /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe "$@"
+fi
+EOF
+
+# 添加执行权限
+chmod +x ~/bin/powershell.exe
+```
+
+**重要：** 将 `YourUsername` 替换为你的实际 Windows 用户名。
+
+然后确保 `~/bin` 在你的 `$PATH` 中（通常默认已包含）：
+
+```bash
+# 验证 ~/bin 在 PATH 中
+echo $PATH | grep -o ~/bin
+
+# 如果没有，添加到 ~/.bashrc
+echo 'export PATH="$HOME/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+### 方案二：从 PATH 中移除 Windows 路径
+
+如果你不需要在 WSL2 中直接调用 Windows 程序，可以从 `$PATH` 中移除 Windows 路径：
+
+在 `~/.bashrc` 或 `~/.profile` 中添加：
+
+```bash
+# 移除 Windows 路径 from PATH
+export PATH=$(echo "$PATH" | sed -e 's/:\/mnt\/c\/[^:]*//g' -e 's/:\/mnt\/[^:]*//g')
+```
+
+然后重新加载配置：
+
+```bash
+source ~/.bashrc
+```
+
+### 方案三：使用 WSL2 配置文件
+
+在 Windows 用户目录下创建或编辑 `.wslconfig` 文件：
+
+**路径：** `C:\Users\YourUsername\.wslconfig`
+
+```ini
+[wsl2]
+# 启用 WSL2 优化
+memory=4GB
+processors=4
+swap=2GB
+
+[interop]
+# 禁用 Windows 路径附加到 Linux PATH（需要最新版 WSL）
+appendWindowsPath=false
+```
+
+**注意：** `appendWindowsPath=false` 需要较新版本的 WSL2 才支持。
+
+修改后需要重启 WSL2：
+
+```powershell
+# 在 PowerShell 或 CMD 中运行
+wsl --shutdown
+```
+
+然后重新打开 WSL2 终端。
+
+## 验证修复
+
+应用上述任一解决方案后，重启 Claude Code 并测试输入是否流畅。
+
+你也可以检查是否还存在频繁的 PowerShell 调用：
+
+```bash
+# 在另一个终端窗口中运行，观察是否有频繁的 powershell.exe 进程
+watch -n 1 'ps aux | grep -i powershell | grep -v grep'
+```
+
+## 推荐方案
+
+对于大多数用户，我推荐**方案一**（创建包装脚本），原因如下：
+
+1. **不影响其他功能**：仍可在 WSL2 中调用 Windows 程序
+2. **精准解决问题**：只拦截导致卡顿的特定调用
+3. **易于维护**：不需要修改全局配置
+4. **立即生效**：无需重启 WSL2
+
+## 相关资源
+
+- [GitHub Issue: WSL2 Repeated powershell.exe calls](https://github.com/anthropics/claude-code/issues/14352)
+- [Windows 下 WSL2 运行 Claude Code 卡顿的解决方法 - LINUX DO](https://linux.do/t/topic/956128)
+- [WSL2 官方文档](https://docs.microsoft.com/en-us/windows/wsl/wsl2-architecture)
+
+## 总结
+
+WSL2 运行 Claude Code 卡顿的根本原因是 `$PATH` 中的 Windows 程序被反复调用。通过创建包装脚本拦截这些调用，可以有效地解决卡顿问题，同时保持 WSL2 的互操作性。
+
+希望这篇文章能帮助你解决 WSL2 下 Claude Code 的卡顿问题！
