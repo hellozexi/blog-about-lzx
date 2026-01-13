@@ -1,6 +1,9 @@
 import Image from 'next/image'
+import { MermaidChart } from '@/components/blog/mermaid'
+import { MctpArchitecture } from '@/components/blog/mcp-architecture'
 
 export const components = {
+  MctpArchitecture: () => <MctpArchitecture />,
   h1: ({ children }: { children: React.ReactNode }) => (
     <h1 className="scroll-m-20 text-4xl font-extrabold tracking-tight lg:text-5xl mb-4">
       {children}
@@ -47,6 +50,13 @@ export const components = {
     </blockquote>
   ),
   code: ({ children, className }: { children: React.ReactNode; className?: string }) => {
+    const match = /language-(\w+)/.exec(className || '')
+    const language = match ? match[1] : ''
+
+    if (language === 'mermaid') {
+      return <MermaidChart chart={String(children).replace(/\n$/, '')} />
+    }
+
     return (
       <code className={`relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm ${className || ''}`}>
         {children}

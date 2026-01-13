@@ -1,0 +1,769 @@
+---
+title: "从零开始构建你的第一个 MCP Server：完整教程"
+date: "2025-01-13"
+summary: "深入了解 MCP (Model Context Protocol) 协议，从零开始创建一个功能完整的 MCP Server，并将其集成到 Claude Code 中使用。"
+categories: ["技术教程"]
+tags: ["MCP", "Claude Code", "Python", "AI", "教程"]
+draft: false
+---
+
+## 前言
+
+MCP (Model Context Protocol) 是一个开放协议，允许 AI 应用程序（如 Claude）与外部工具和数据源进行通信。本教程将带你从零开始创建一个功能完整的 MCP Server，并集成到 Claude Code 中使用。
+
+> **学习目标**：理解 MCP 协议的工作原理，掌握创建和部署自定义 MCP Server 的完整流程
+
+---
+
+## 目录
+
+1. [什么是 MCP？](#什么是-mcp)
+2. [项目准备](#项目准备)
+3. [创建 MCP Server](#创建-mcp-server)
+4. [实现工具函数](#实现工具函数)
+5. [配置 Claude Code](#配置-claude-code)
+6. [测试与验证](#测试与验证)
+7. [扩展与优化](#扩展与优化)
+8. [常见问题](#常见问题)
+
+---
+
+## 什么是 MCP？
+
+### MCP 的核心概念
+
+**MCP (Model Context Protocol)** 是一个标准化的协议，定义了 AI 应用程序如何与外部服务进行通信。
+
+<MctpArchitecture />
+
+### 为什么需要 MCP？
+
+- **扩展能力**：为 Claude 提供自定义工具和功能
+- **数据访问**：连接外部 API、数据库、本地文件
+- **业务集成**：将 AI 能力集成到你的业务流程中
+- **标准化**：统一的协议，易于开发和维护
+
+### MCP 的关键组件
+
+| 组件 | 说明 |
+|------|------|
+| **Server** | 提供 tools 和 resources 的程序 |
+| **Client** | 使用 tools 的应用（如 Claude Code） |
+| **Tools** | 可被 AI 调用的函数，有明确的输入输出定义 |
+| **Transport** | 通信方式（stdio, SSE 等） |
+
+---
+
+## 项目准备
+
+### 环境要求
+
+- Python 3.10+
+- Claude Code（已安装）
+- uv（推荐，或使用 pip）
+
+### 创建项目目录
+
+```bash
+mkdir ~/workingspace/lzx-mcp
+cd ~/workingspace/lzx-mcp
+```
+
+### 项目结构
+
+```
+lzx-mcp/
+├── demo_mcp_server.py              # MCP Server 主程序
+├── test_server.py                  # 测试脚本
+├── pyproject.toml                  # 项目配置
+├── claude_desktop_config.example.json  # 配置示例
+└── README.md                       # 说明文档
+```
+
+---
+
+## 创建 MCP Server
+
+### 步骤 1：初始化项目配置
+
+创建 `pyproject.toml` 文件：
+
+```toml
+[project]
+name = "demo-mcp-server"
+version = "0.1.0"
+description = "A demo MCP server for learning purposes"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=0.9.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+demo-mcp-server = "demo_mcp_server:main"
+```
+
+**配置说明**：
+- `dependencies`: 声明 MCP SDK 依赖
+- `[project.scripts]`: 定义命令行入口，让 `demo-mcp-server` 命令可以直接运行
+
+### 步骤 2：创建 Server 基础结构
+
+创建 `demo_mcp_server.py`：
+
+```python
+#!/usr/bin/env python3
+"""
+Demo MCP Server - 一个简单的 MCP Server 演示
+"""
+
+import asyncio
+from mcp.server import Server
+from mcp.server.stdio import stdio_server
+
+# 创建 MCP Server 实例
+app = Server("demo-mcp-server")
+
+async def main():
+    """主入口函数"""
+    async with stdio_server() as (read_stream, write_stream):
+        await app.run(
+            read_stream,
+            write_stream,
+            app.create_initialization_options(),
+        )
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+**代码解析**：
+- `Server("demo-mcp-server")`: 创建 server 实例，名称用于标识
+- `stdio_server()`: 使用标准输入输出进行通信（推荐用于本地开发）
+- `app.run()`: 启动 server，监听并处理来自 client 的请求
+
+---
+
+## 实现工具函数
+
+### MCP Server 的两个核心方法
+
+MCP Server 需要实现两个关键方法：
+
+1. **`list_tools()`**: 声明提供了哪些工具
+2. **`call_tool()`**: 处理工具调用请求
+
+### 工具 1：计算器
+
+```python
+from mcp.types import Tool, TextContent
+
+@app.list_tools()
+async def list_tools() -> list[Tool]:
+    """声明可用工具"""
+    return [
+        Tool(
+            name="calculate",
+            description="执行基本算术运算（加减乘除）",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "operation": {
+                        "type": "string",
+                        "enum": ["add", "subtract", "multiply", "divide"],
+                        "description": "运算类型",
+                    },
+                    "a": {
+                        "type": "number",
+                        "description": "第一个数",
+                    },
+                    "b": {
+                        "type": "number",
+                        "description": "第二个数",
+                    },
+                },
+                "required": ["operation", "a", "b"],
+            },
+        ),
+        # ... 其他工具
+    ]
+
+@app.call_tool()
+async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+    """路由工具调用"""
+    if name == "calculate":
+        return await handle_calculate(arguments)
+    # ... 其他工具处理
+
+async def handle_calculate(arguments: dict) -> list[TextContent]:
+    """处理计算逻辑"""
+    operation = arguments["operation"]
+    a = arguments["a"]
+    b = arguments["b"]
+
+    if operation == "add":
+        result = a + b
+    elif operation == "subtract":
+        result = a - b
+    elif operation == "multiply":
+        result = a * b
+    elif operation == "divide":
+        result = a / b if b != 0 else "错误：除零"
+
+    return [TextContent(
+        type="text",
+        text=f"计算结果：{a} {operation} {b} = {result}"
+    )]
+```
+
+### 工具 2：获取当前时间
+
+```python
+from datetime import datetime
+
+Tool(
+    name="get_current_time",
+    description="获取当前日期和时间",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "timezone": {
+                "type": "string",
+                "description": "时区（如 'UTC', 'Asia/Shanghai'）",
+                "default": "local",
+            },
+            "format": {
+                "type": "string",
+                "enum": ["full", "date", "time"],
+                "description": "输出格式",
+                "default": "full",
+            },
+        },
+        "required": [],
+    },
+)
+
+async def handle_get_current_time(arguments: dict) -> list[TextContent]:
+    now = datetime.now()
+    time_format = arguments.get("format", "full")
+
+    if time_format == "full":
+        time_str = now.strftime("%Y-%m-%d %H:%M:%S")
+    elif time_format == "date":
+        time_str = now.strftime("%Y-%m-%d")
+    else:
+        time_str = now.strftime("%H:%M:%S")
+
+    return [TextContent(
+        type="text",
+        text=f"当前时间：{time_str}"
+    )]
+```
+
+### 工具 3：文本分析
+
+```python
+Tool(
+    name="analyze_text",
+    description="分析文本统计信息（字数、字符数等）",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "text": {
+                "type": "string",
+                "description": "要分析的文本",
+            },
+        },
+        "required": ["text"],
+    },
+)
+
+async def handle_analyze_text(arguments: dict) -> list[TextContent]:
+    text = arguments["text"]
+    words = text.split()
+    chars = len(text)
+    chars_no_spaces = len(text.replace(" ", ""))
+
+    analysis = f"""文本分析结果：
+- 字数：{len(words)}
+- 字符数：{chars}
+- 字符数（不含空格）：{chars_no_spaces}
+- 行数：{text.count('\\n') + 1}
+"""
+
+    return [TextContent(type="text", text=analysis)]
+```
+
+### 完整的 Server 代码
+
+将以上代码组合起来，完整的 `demo_mcp_server.py` 如下：
+
+```python
+#!/usr/bin/env python3
+"""Demo MCP Server"""
+
+import asyncio
+from datetime import datetime
+from mcp.server import Server
+from mcp.types import Tool, TextContent
+from mcp.server.stdio import stdio_server
+
+app = Server("demo-mcp-server")
+
+@app.list_tools()
+async def list_tools() -> list[Tool]:
+    return [
+        Tool(
+            name="calculate",
+            description="执行基本算术运算",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "operation": {
+                        "type": "string",
+                        "enum": ["add", "subtract", "multiply", "divide"],
+                    },
+                    "a": {"type": "number"},
+                    "b": {"type": "number"},
+                },
+                "required": ["operation", "a", "b"],
+            },
+        ),
+        Tool(
+            name="get_current_time",
+            description="获取当前时间",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "format": {
+                        "type": "string",
+                        "enum": ["full", "date", "time"],
+                        "default": "full",
+                    },
+                },
+                "required": [],
+            },
+        ),
+        Tool(
+            name="analyze_text",
+            description="分析文本统计",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "text": {"type": "string"},
+                },
+                "required": ["text"],
+            },
+        ),
+    ]
+
+@app.call_tool()
+async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+    if name == "calculate":
+        op, a, b = arguments["operation"], arguments["a"], arguments["b"]
+        ops = {
+            "add": a + b,
+            "subtract": a - b,
+            "multiply": a * b,
+            "divide": a / b if b != 0 else "错误：除零",
+        }
+        return [TextContent(type="text", text=f"结果：{ops[op]}")]
+    elif name == "get_current_time":
+        fmt = arguments.get("format", "full")
+        now = datetime.now()
+        formats = {
+            "full": "%Y-%m-%d %H:%M:%S",
+            "date": "%Y-%m-%d",
+            "time": "%H:%M:%S",
+        }
+        return [TextContent(type="text", text=f"当前时间：{now.strftime(formats[fmt])}")]
+    elif name == "analyze_text":
+        text = arguments["text"]
+        return [TextContent(
+            type="text",
+            text=f"字数：{len(text.split())}，字符数：{len(text)}"
+        )]
+
+async def main():
+    async with stdio_server() as (read_stream, write_stream):
+        await app.run(read_stream, write_stream, app.create_initialization_options())
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+---
+
+## 配置 Claude Code
+
+### 安装依赖
+
+```bash
+# 使用 uv（推荐）
+uv pip install --system -e .
+
+# 或使用 pip
+pip install -e .
+```
+
+### 创建配置文件
+
+Claude Code 的配置文件位置：
+
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
+
+创建或编辑配置文件：
+
+```json
+{
+  "mcpServers": {
+    "demo-server": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/bytedance/workingspace/lzx-mcp",
+        "run",
+        "demo-mcp-server"
+      ]
+    }
+  }
+}
+```
+
+**配置说明**：
+- `demo-server`: server 的唯一标识符（可自定义）
+- `command`: 启动命令（`uv` 或直接使用 `demo-mcp-server`）
+- `args`: 命令参数，指定项目路径和要运行的脚本
+
+### 重启 Claude Code
+
+**重要**：必须完全退出并重启 Claude Code 才能加载新配置
+
+- macOS: `Cmd + Q` 完全退出
+- Windows/Linux: 完全关闭应用
+
+---
+
+## 测试与验证
+
+### 本地测试工具定义
+
+创建测试脚本 `test_server.py`：
+
+```python
+#!/usr/bin/env python3
+import asyncio
+from demo_mcp_server import list_tools
+
+async def test():
+    tools = await list_tools()
+    print(f"发现 {len(tools)} 个工具：")
+    for tool in tools:
+        print(f"- {tool.name}: {tool.description}")
+
+asyncio.run(test())
+```
+
+运行测试：
+
+```bash
+uv run test_server.py
+```
+
+预期输出：
+
+```
+发现 3 个工具：
+- calculate: 执行基本算术运算
+- get_current_time: 获取当前时间
+- analyze_text: 分析文本统计
+```
+
+### 在 Claude Code 中测试
+
+重启 Claude Code 后，可以直接对话测试：
+
+**测试 1 - 计算器**：
+```
+请帮我计算 123 乘以 456
+```
+
+**测试 2 - 获取时间**：
+```
+获取当前的完整时间
+```
+
+**测试 3 - 文本分析**：
+```
+分析这段文本：
+MCP 是一个开放协议，让 AI 应用能够连接外部工具。
+```
+
+### 调试技巧
+
+**启用 MCP 日志**：
+
+在 Claude Code 设置中启用详细日志，可以看到：
+- Client 和 Server 之间的通信
+- 每次工具调用的参数和返回值
+- 错误信息和堆栈跟踪
+
+**常见问题排查**：
+
+| 问题 | 解决方案 |
+|------|----------|
+| 工具未出现 | 检查配置文件 JSON 格式，确保完全重启 Claude Code |
+| 调用失败 | 手动运行 `demo-mcp-server` 检查是否有错误 |
+| 找不到 uv 命令 | 修改配置使用 `demo-mcp-server` 直接调用 |
+
+---
+
+## 扩展与优化
+
+### 添加真实 API 集成
+
+**示例：天气查询工具**
+
+```python
+import httpx
+
+Tool(
+    name="get_weather",
+    description="获取城市天气信息",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "city": {"type": "string", "description": "城市名称"},
+        },
+        "required": ["city"],
+    },
+)
+
+async def handle_get_weather(arguments: dict) -> list[TextContent]:
+    city = arguments["city"]
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            f"https://api.weather.example.com?city={city}"
+        )
+        weather_data = response.json()
+        return [TextContent(
+            type="text",
+            text=f"{city} 天气：{weather_data['condition']}"
+        )]
+```
+
+### 添加资源 (Resources)
+
+除了工具，MCP Server 还可以提供**资源**（静态或动态数据）：
+
+```python
+from mcp.types import Resource, TextResourceContents
+
+@app.list_resources()
+async def list_resources() -> list[Resource]:
+    return [
+        Resource(
+            uri="file:///config",
+            name="配置文件",
+            description="Server 的配置信息",
+            mimeType="text/plain",
+        )
+    ]
+
+@app.read_resource()
+async def read_resource(uri: str) -> TextResourceContents:
+    if uri == "file:///config":
+        return TextResourceContents(
+            uri=uri,
+            mimeType="text/plain",
+            text="version: 1.0\nauthor: Your Name"
+        )
+```
+
+### 错误处理最佳实践
+
+```python
+@app.call_tool()
+async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+    try:
+        # 验证参数
+        if not arguments.get("text"):
+            return [TextContent(
+                type="text",
+                text="错误：缺少必需参数 'text'"
+            )]
+
+        # 执行逻辑
+        result = await process_text(arguments["text"])
+
+        # 返回结果
+        return [TextContent(type="text", text=result)]
+
+    except Exception as e:
+        # 记录错误日志
+        logger.error(f"Tool {name} failed: {e}")
+        # 返回用户友好的错误信息
+        return [TextContent(
+            type="text",
+            text=f"执行出错：{str(e)}"
+        )]
+```
+
+### 性能优化
+
+**1. 使用缓存**：
+```python
+from functools import lru_cache
+
+@lru_cache(maxsize=100)
+def get_cached_data(key: str):
+    # 缓存计算结果
+    return expensive_computation(key)
+```
+
+**2. 并发处理**：
+```python
+async def fetch_multiple_data(ids: list[str]):
+    tasks = [fetch_data(id) for id in ids]
+    results = await asyncio.gather(*tasks)
+    return results
+```
+
+**3. 连接池**：
+```python
+# 复用 HTTP 连接
+http_client = httpx.AsyncClient()
+
+async def cleanup():
+    await http_client.aclose()
+```
+
+---
+
+## 常见问题
+
+### Q1: MCP 和 Function Calling 有什么区别？
+
+**MCP**:
+- 完整的协议标准化
+- 支持双向通信（Server → Client）
+- 提供工具、资源、提示等多种能力
+- 独立的 server 进程
+
+**Function Calling**:
+- 简单的单向调用
+- 直接在进程中执行
+- 更轻量但功能有限
+
+### Q2: 如何调试 MCP Server？
+
+1. **本地测试**：
+   ```bash
+   # 直接运行 server，查看输出
+   uv run demo-mcp-server
+   ```
+
+2. **启用日志**：
+   ```python
+   import logging
+   logging.basicConfig(level=logging.DEBUG)
+   ```
+
+3. **使用 MCP Inspector**：
+   ```bash
+   npx @modelcontextprotocol/inspector uv run demo-mcp-server
+   ```
+
+### Q3: Server 可以部署为远程服务吗？
+
+可以！MCP 支持 **SSE (Server-Sent Events)** 传输：
+
+```python
+from mcp.server.sse import SseServerTransport
+
+# 使用 SSE 替代 stdio
+transport = SseServerTransport("/messages")
+```
+
+然后可以部署到云服务，通过 HTTP 访问。
+
+### Q4: 如何管理 API 密钥？
+
+**推荐方案**：使用环境变量
+
+```python
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+api_key = os.getenv("MY_API_KEY")
+```
+
+创建 `.env` 文件（记得添加到 `.gitignore`）：
+```
+MY_API_KEY=sk-xxxxx
+```
+
+### Q5: 多个 Server 可以同时运行吗？
+
+可以！在配置文件中添加多个 server：
+
+```json
+{
+  "mcpServers": {
+    "demo-server": {
+      "command": "demo-mcp-server"
+    },
+    "weather-server": {
+      "command": "weather-mcp-server"
+    },
+    "database-server": {
+      "command": "db-mcp-server"
+    }
+  }
+}
+```
+
+Claude Code 会同时连接所有 server。
+
+---
+
+## 总结
+
+通过本教程，你已经学会了：
+
+✅ 理解 MCP 协议的核心概念
+✅ 创建一个功能完整的 MCP Server
+✅ 实现多个工具函数
+✅ 配置 Claude Code 集成
+✅ 测试和调试 MCP Server
+✅ 扩展和优化最佳实践
+
+### 下一步
+
+1. **实战项目**：
+   - 创建一个数据库查询 MCP Server
+   - 集成你的业务 API
+   - 构建文件管理工具
+
+2. **深入学习**：
+   - [MCP 官方文档](https://modelcontextprotocol.io/)
+   - [MCP Python SDK](https://github.com/modelcontextprotocol/python-sdk)
+   - [Claude Code 文档](https://claude.com/claude-code)
+
+3. **社区资源**：
+   - [MCP Servers 仓库](https://github.com/modelcontextprotocol/servers) - 官方示例集合
+   - 分享你创建的 MCP Server！
+
+---
+
+**祝你 MCP 开发之旅愉快！**
+
+如有问题，欢迎在评论区讨论或提交 Issue。
