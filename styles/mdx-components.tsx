@@ -49,6 +49,38 @@ export const components = {
       {children}
     </blockquote>
   ),
+  table: ({ children }: { children: React.ReactNode }) => (
+    <div className="my-6 w-full overflow-y-auto">
+      <table className="w-full">
+        {children}
+      </table>
+    </div>
+  ),
+  thead: ({ children }: { children: React.ReactNode }) => (
+    <thead className="[&_tr]:border-b">
+      {children}
+    </thead>
+  ),
+  tbody: ({ children }: { children: React.ReactNode }) => (
+    <tbody className="[&_tr:last-child]:border-0">
+      {children}
+    </tbody>
+  ),
+  tr: ({ children }: { children: React.ReactNode }) => (
+    <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+      {children}
+    </tr>
+  ),
+  th: ({ children }: { children: React.ReactNode }) => (
+    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0">
+      {children}
+    </th>
+  ),
+  td: ({ children }: { children: React.ReactNode }) => (
+    <td className="p-4 align-middle [&:has([role=checkbox])]:pr-0">
+      {children}
+    </td>
+  ),
   code: ({ children, className }: { children: React.ReactNode; className?: string }) => {
     const match = /language-(\w+)/.exec(className || '')
     const language = match ? match[1] : ''
