@@ -7,6 +7,8 @@ interface MermaidProps {
   chart: string
 }
 
+let mermaidInitialized = false
+
 export function MermaidChart({ chart }: MermaidProps) {
   const ref = useRef<HTMLDivElement>(null)
   const [svg, setSvg] = useState<string>('')
@@ -18,14 +20,14 @@ export function MermaidChart({ chart }: MermaidProps) {
         const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`
 
         // 初始化 Mermaid（只初始化一次）
-        if (!mermaid.isInitialized) {
+        if (!mermaidInitialized) {
           mermaid.initialize({
             startOnLoad: false,
             theme: 'default',
             securityLevel: 'loose',
             fontFamily: 'ui-sans-serif, system-ui, sans-serif',
           })
-          mermaid.isInitialized = true
+          mermaidInitialized = true
         }
 
         // 渲染图表
